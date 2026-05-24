@@ -50,7 +50,7 @@ async def create_user(user:UserCreate,db: Annotated[AsyncSession,Depends(get_db)
 
 
 ##API get User GET
-@router.get("{user_id}",response_model=UserResponse)
+@router.get("/{user_id}",response_model=UserResponse)
 async def get_user(user_id:int, db:Annotated[AsyncSession,Depends(get_db)]):
     result=await db.execute(
         select(models.User).where(models.User.id==user_id),
@@ -66,7 +66,7 @@ async def get_user(user_id:int, db:Annotated[AsyncSession,Depends(get_db)]):
 
 
 ##API update User PATCH
-@router.patch("{user_id}",response_model=UserResponse)
+@router.patch("/{user_id}",response_model=UserResponse)
 async def update_user(user_id:int,user_update:UserUpdate,db:Annotated[AsyncSession,Depends(get_db)]):
     result=await db.execute(select(models.User).where(models.User.id==user_id))
     user=result.scalars().first()
@@ -98,7 +98,7 @@ async def update_user(user_id:int,user_update:UserUpdate,db:Annotated[AsyncSessi
         
 
 ##API get User Post GET
-@router.get("{user_id}/posts",response_model=list[PostResponse])
+@router.get("/{user_id}/posts",response_model=list[PostResponse])
 async def get_user_posts(user_id:int,db:Annotated[AsyncSession,Depends(get_db)]):
     result=await db.execute(select(models.User).where(models.User.id==user_id))
     user=result.scalars().first()
@@ -108,14 +108,15 @@ async def get_user_posts(user_id:int,db:Annotated[AsyncSession,Depends(get_db)])
     result=await db.execute(
         select(models.Post)
         .options(selectinload(models.Post.author))
-        .where(models.Post.user_id==user_id),
+        .where(models.Post.user_id==user_id)
+        .order_by(models.Post.date_posted.desc()),
         )
     posts=result.scalars().all()
     return posts
 
 
 ##API delete User DELETE
-@router.delete("{user_id}",status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{user_id}",status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(user_id:int,db:Annotated[AsyncSession,Depends(get_db)]):
     result=await db.execute(select(models.User).where(models.User.id==user_id))
     user=result.scalars().first()
