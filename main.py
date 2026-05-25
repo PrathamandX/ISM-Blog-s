@@ -100,6 +100,25 @@ async def user_posts_page(request:Request,user_id:int,db:Annotated[AsyncSession,
         {"posts":posts,"user":user,"title":f"{user.username}'s Posts"},
     )
 
+##HTML loging page GET
+@app.get("/login",include_in_schema=False)
+async def login_page(request:Request):
+    return templates.TemplateResponse(
+        request,
+        "login.html",
+        {"title":"Login"},
+    )
+
+##HTML register page GET
+@app.get("/register",include_in_schema=False)
+async def register_page(request:Request):
+    return templates.TemplateResponse(
+        request,
+        "register.html",
+        {"title":"Register"},
+    )
+
+
 
 ##==========================================================================================================##
 
