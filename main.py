@@ -56,7 +56,7 @@ async def home(request:Request,db:Annotated[AsyncSession,Depends(get_db)]):
     return templates.TemplateResponse(
         request,
         "home.html",
-        {"posts":posts,"institute":"IIT-ISM"}
+        {"posts":posts,"title":"IIT-ISM"}
     )
 
 ##HTML single post page GET
@@ -116,6 +116,15 @@ async def register_page(request:Request):
         request,
         "register.html",
         {"title":"Register"},
+    )
+
+##HTML account page GET
+@app.get("/account",include_in_schema=False)
+async def account_page(request:Request):
+    return templates.TemplateResponse(
+        request,
+        "account.html",
+        {"title":"Account"},
     )
 
 
