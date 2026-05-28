@@ -1,7 +1,7 @@
 from datetime import timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status,UploadFile
+from fastapi import APIRouter, Depends, HTTPException, status,UploadFile,Query
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select,func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +13,7 @@ from starlette.concurrency import run_in_threadpool
 
 import models
 from database import get_db
-from schemas import PostResponse, UserCreate, UserPublic,UserPrivate, UserUpdate,Token
+from schemas import PostResponse, UserCreate, UserPublic,UserPrivate, UserUpdate,Token,PaginatedPostResponse
 from image_utils import process_profile_image,delete_profile_image
 from auth import (
     CurrentUser,
@@ -159,22 +159,47 @@ async def update_user(
         
 
 ##API get User Post GET
-@router.get("/{user_id}/posts",response_model=list[PostResponse])
-async def get_user_posts(user_id:int,db:Annotated[AsyncSession,Depends(get_db)]):
-    result=await db.execute(select(models.User).where(models.User.id==user_id))
-    user=result.scalars().first()
+@router.get("/{user_id}/posts", response_model=PaginatedPostResponse)
+async def get_user_posts(
+    user_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 10,
+):
+    result = await db.execute(select(models.User).where(models.User.id == user_id))
+    user = result.scalars().first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User not found")
-    
-    result=await db.execute(
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    count_result = await db.execute(
+        select(func.count())
+        .select_from(models.Post)
+        .where(models.Post.user_id == user_id),
+    )
+    total = count_result.scalar() or 0
+
+    result = await db.execute(
         select(models.Post)
         .options(selectinload(models.Post.author))
-        .where(models.Post.user_id==user_id)
-        .order_by(models.Post.date_posted.desc()),
-        )
-    posts=result.scalars().all()
-    return posts
+        .where(models.Post.user_id == user_id)
+        .order_by(models.Post.date_posted.desc())
+        .offset(skip)
+        .limit(limit),
+    )
+    posts = result.scalars().all()
 
+    has_more = skip + len(posts) < total
+
+    return PaginatedPostResponse(
+        posts=[PostResponse.model_validate(post) for post in posts],
+        total=total,
+        skip=skip,
+        limit=limit,
+        has_more=has_more,
+    )
 
 ##API delete User DELETE
 @router.delete("/{user_id}",status_code=status.HTTP_204_NO_CONTENT)

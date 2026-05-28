@@ -41,9 +41,19 @@ class PostUpdate(BaseModel):
 
 ##adding default data genrated by system
 class PostResponse(PostBase):
-    model_config=ConfigDict(from_attribute=True) ##enables the data to be read from database where it is not in dict format
+    model_config=ConfigDict(from_attributes=True) ##enables the data to be read from database where it is not in dict format
 
     id:int
     user_id:int
     date_posted: datetime
     author: UserPublic
+
+##metadata class for pagination
+class PaginatedPostResponse(BaseModel):
+    posts:list[PostResponse]
+    total:int
+    skip:int
+    limit:int
+    has_more:bool
+
+    
