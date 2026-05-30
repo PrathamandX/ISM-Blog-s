@@ -17,16 +17,14 @@ from sqlalchemy.orm import selectinload
 # from sqlalchemy.orm import Session
 
 import models
-from database import Base,engine,get_db
+from database import engine,get_db
 from routers import posts,users
 from config import settings 
 
 # Base.metadata.create_all(bind=engine) ##binds or create new database if not exits before app starts(synchronous)
 @asynccontextmanager
 async def lifespan(_app:FastAPI):
-    ##startup
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    
     yield
     ##shutdown
     await engine.dispose()
@@ -34,7 +32,7 @@ async def lifespan(_app:FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 app.mount("/static",StaticFiles(directory="static"),name="static")
-app.mount("/media",StaticFiles(directory="media"),name="static")
+# app.mount("/media",StaticFiles(directory="media"),name="static") ##as now we save to s3
 
 templates=Jinja2Templates(directory="templates")
 

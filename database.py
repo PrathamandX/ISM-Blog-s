@@ -1,13 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession,async_sessionmaker,create_async_engine
 from sqlalchemy.orm import DeclarativeBase
+from config import settings
 
-SQLALCHEMY_DATABASE_URL="sqlite+aiosqlite:///./blog.db" ##tells sqlalchemy where to connect (For postgresql just change url),
-                                                ## the blog.db file will be auto created
 
-engine=create_async_engine(
-    SQLALCHEMY_DATABASE_URL,    
-    connect_args={"check_same_thread":False},
-)
+engine=create_async_engine(settings.database_url)
 
 AsyncSessionLocal=async_sessionmaker(
     engine,

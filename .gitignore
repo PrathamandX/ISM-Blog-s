@@ -7,3 +7,5 @@ media/
 populate_images/
 populate_db.py
 routers/__pycache__/
+alembic/
+alembic.ini

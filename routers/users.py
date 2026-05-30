@@ -11,6 +11,8 @@ from sqlalchemy.orm import selectinload
 from PIL import UnidentifiedImageError
 from starlette.concurrency import run_in_threadpool
 
+from botocore.exceptions import ClientError
+
 
 import models
 from database import get_db
@@ -26,7 +28,7 @@ from schemas import (
     ForgotPasswordRequest,
     ResetPasswordRequest
 )
-from image_utils import process_profile_image,delete_profile_image
+from image_utils import process_profile_image,delete_profile_image,upload_profile_image
 from email_utils import send_password_reset_email
 from auth import (
     CurrentUser,
@@ -180,7 +182,7 @@ async def reset_password(
             detail="Invalid or expired token",
         )
     
-    if reset_token.expires_at.replace(tzinfo=UTC)<datetime.now(UTC):
+    if reset_token.expires_at<datetime.now(UTC):
         await db.delete(reset_token)
         await db.commit()
         raise HTTPException(
@@ -358,7 +360,7 @@ async def delete_user(user_id:int,current_user:CurrentUser,db:Annotated[AsyncSes
     await db.commit()
 
     if old_filename:
-        delete_profile_image(old_filename)
+        await delete_profile_image(old_filename)
     
 
 
@@ -383,21 +385,29 @@ async def upload_profile_picture(
             detail=f"File too large Maximum size is {settings.max_upload_size_bytes // (1024*1024)}MB",
         )
     try:
-        new_filename=await run_in_threadpool(process_profile_image,content)## as this function is async but processing image by PLI is CPU bound we run it in new thread pool to avoid await blocking
+        processed_bytes,new_filename=await run_in_threadpool(process_profile_image,content)## as this function is async but processing image by PLI is CPU bound we run it in new thread pool to avoid await blocking
     except UnidentifiedImageError as err:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid image file. Please upload a valid image (JPEG,PNG,GIF,WebP).",
         )
-    
+    #uploads to s3 runs in threadpool via async wrapper
+    try:
+        await upload_profile_image(processed_bytes,new_filename)
+    except ClientError as err:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to upload image. Please try again.",
+        )from err
+        
     old_filename=current_user.image_file
-
+ 
     current_user.image_file=new_filename
     await db.commit()
     await db.refresh(current_user)
 
     if old_filename:
-        delete_profile_image(old_filename)
+        await delete_profile_image(old_filename)
     
     return current_user
 
@@ -422,6 +432,6 @@ async def delete_user_picture(
     await db.commit()
     await db.refresh(current_user)
 
-    delete_profile_image(old_filename)
+    await delete_profile_image(old_filename)
     return current_user
 
