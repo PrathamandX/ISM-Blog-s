@@ -62,7 +62,7 @@ async def home(request:Request,db:Annotated[AsyncSession,Depends(get_db)]):
         "home.html",
         {
             "posts":posts,
-            "title":"IIT-ISM",
+            "title":"ISM",
             "limit":settings.posts_per_page,
             "has_more":has_more,
         },
